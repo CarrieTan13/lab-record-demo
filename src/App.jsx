@@ -87,8 +87,10 @@ const initialRecordings = [
 
 function App() {
   const [page, setPage] = useState("Projects");
+  const [projectList, setProjectList] = useState(projects);
   const [recordings, setRecordings] = useState(initialRecordings);
   const [showWizard, setShowWizard] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(projects[0]);
 
   function startRecording() {
@@ -100,6 +102,21 @@ function App() {
     setSelectedProject(project);
     setPage("Project");
   }
+
+  function createProject(projectData) {
+  const newProject = {
+    id: `project-${Date.now()}`,
+    name: projectData.name,
+    description: projectData.description,
+    experiments: [],
+    runs: 0,
+    recordings: 0,
+  };
+
+  setProjectList((current) => [newProject, ...current]);
+  setShowProjectModal(false);
+}
+
 
   function saveRecording(recording) {
     setRecordings((current) => [recording, ...current]);
@@ -174,9 +191,10 @@ function App() {
 
         {page === "Projects" && (
           <ProjectsPage
-            projects={projects}
+            projects={projectList}
             openProject={openProject}
             startRecording={startRecording}
+            onNewProject={() => setShowProjectModal(true)}
           />
         )}
 
@@ -197,7 +215,14 @@ function App() {
 
         {page === "Protocols" && <ProtocolsPage />}
 
-        {page === "Datasets" && <DatasetsPage projects={projects} />}
+        {page === "Datasets" && <DatasetsPage projects={projectList} />}
+
+        {showProjectModal && (
+          <NewProjectModal
+            close={() => setShowProjectModal(false)}
+            createProject={createProject}
+          />
+        )}
 
         {showWizard && (
           <RecordingWizard
@@ -205,12 +230,18 @@ function App() {
             saveRecording={saveRecording}
           />
         )}
+
       </main>
     </div>
   );
 }
 
-function ProjectsPage({ projects, openProject, startRecording }) {
+function ProjectsPage({
+  projects,
+  openProject,
+  startRecording,
+  onNewProject,
+}) {
   return (
     <Page>
       <PageHeading
@@ -218,8 +249,8 @@ function ProjectsPage({ projects, openProject, startRecording }) {
         title="Projects"
         description="Organize experiments, runs, recordings, and datasets."
         action={
-          <button className="primary-button" onClick={startRecording}>
-            + Start recording
+          <button className="primary-button" onClick={onNewProject}>
+            + New project
           </button>
         }
       />
@@ -505,6 +536,83 @@ function DatasetsPage({ projects }) {
     </Page>
   );
 }
+
+function NewProjectModal({ close, createProject }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+
+  function submit(event) {
+    event.preventDefault();
+
+    if (!name.trim()) return;
+
+    createProject({
+      name: name.trim(),
+      description: description.trim() || "No project description yet.",
+    });
+  }
+
+  return (
+    <div className="modal-backdrop" onMouseDown={close}>
+      <div
+        className="project-modal"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="modal-heading">
+          <div>
+            <span className="eyebrow">PROJECT SETUP</span>
+            <h2>Create a new project</h2>
+          </div>
+
+          <button className="close-button" onClick={close}>
+            ×
+          </button>
+        </div>
+
+        <p className="modal-description">
+          Projects organize your experiments, runs, recordings, protocols, and
+          datasets.
+        </p>
+
+        <form onSubmit={submit}>
+          <label className="field">
+            <span>Project name</span>
+            <input
+              autoFocus
+              required
+              value={name}
+              placeholder="e.g. Neural Imaging Study"
+              onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+
+          <label className="field">
+            <span>Description</span>
+            <textarea
+              value={description}
+              placeholder="What is this project investigating?"
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </label>
+
+          <div className="modal-help">
+            You can add experiments and protocols after creating the project.
+          </div>
+
+          <div className="wizard-actions">
+            <button type="button" className="secondary-button" onClick={close}>
+              Cancel
+            </button>
+            <button type="submit" className="primary-button">
+              Create project
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 
 function RecordingWizard({ close, saveRecording }) {
   const [step, setStep] = useState(1);
